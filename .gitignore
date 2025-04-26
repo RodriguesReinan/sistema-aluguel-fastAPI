@@ -1,0 +1,51 @@
+# Configurações e credenciais sensíveis
+.env
+FIREBASE_CREDENTIALS_PATH.json
+
+# Pastas e arquivos da IDE
+.idea/
+
+# Ambiente virtual
+.venv/
+venv/
+ENV/
+env/
+# (depende de como você nomear sua virtualenv)
+
+# Cache e arquivos temporários do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build e distribuição
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs
+logs/
+*.log
+
+# Arquivos de testes e temporários
+*test*.py
+teste.py
+run_job_testes.py
+testar_verificar_vencimentos.py
+
+# Configurações locais e backups
+*.bak
+*.swp
+*.tmp
+
+# Arquivos de comandos/documentação temporária
+comandos gerais.txt
+
+# VS Code settings (se usar)
+.vscode/
+
+# Mac OS files (caso use Mac)
+.DS_Store
+
+# Arquivos de banco de dados locais (se gerar)
+*.sqlite3
