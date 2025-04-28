@@ -1,32 +1,36 @@
 import datetime
 from uuid import uuid4
-import re
-
 from fastapi import status, Body, HTTPException
-from sqlalchemy.exc import IntegrityError
+from api.routes.usuarios.models.usuario_model import UsuarioModel
+from api.contrib.tenancy import filter_by_tenant
 from api.routes.imoveis.models import ImovelModel
 from api.routes.proprietarios.models import ProprietarioModel
 from api.routes.imoveis.schemas import ImovelIn, ImovelOut, ImovelUpdate
 from sqlalchemy.future import select
 from api.contrib.dependecies import DatabaseDependency
+from api.services.log_service import registrar_log
 
 
 async def create_imovel(
         db_session: DatabaseDependency,
+        current_user: UsuarioModel,
         imovel_in: ImovelIn = Body(...)
         ) -> ImovelOut:
 
     proprietario_cpf = imovel_in.proprietario.cpf
+
     # proprietario = (await db_session.execute(
-    #     select(ProprietarioModel).filter_by(cpf=proprietario_cpf)
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.cpf == proprietario_cpf,
+    #         ProprietarioModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    proprietario = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.cpf == proprietario_cpf,
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ProprietarioModel).filter(ProprietarioModel.cpf == proprietario_cpf,
+                                                 ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    proprietario = (await db_session.execute(statement)).scalars().first()
 
     if not proprietario:
         raise HTTPException(
@@ -36,13 +40,20 @@ async def create_imovel(
 
     try:
         imovel_out = ImovelOut(id=str(uuid4()), **imovel_in.model_dump())
-        imovel_model = ImovelModel(**imovel_out.model_dump(exclude={'proprietario'}))
+        imovel_model = ImovelModel(**imovel_out.model_dump(exclude={'proprietario'}), tenant_id=current_user.id)
 
         imovel_model.proprietario_id = proprietario.pk_id
+
+        # verifica se estamos recebendo strings vazias, do frontend
+        for key, value in imovel_out.model_dump().items():
+            if value is None or (isinstance(value, str) and value.strip() == ""):
+                raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
         db_session.add(imovel_model)
         await db_session.commit()
         await db_session.refresh(imovel_model)
+        await registrar_log(db_session, "Criação", f"Criou o imóvel: {imovel_model.id}", current_user)
+
     except Exception as e:
         error_message = str(e)
 
@@ -54,27 +65,35 @@ async def create_imovel(
     return imovel_out
 
 
-async def get_all_imoveis(db_session: DatabaseDependency) -> list[ImovelOut]:
-    # imoveis: list[ImovelOut] = (await db_session.execute(select(ImovelModel))).scalars().all()
+async def get_all_imoveis(db_session: DatabaseDependency, current_user: UsuarioModel) -> list[ImovelOut]:
 
-    imoveis: list[ImovelOut] = (await db_session.execute(
-        select(ImovelModel).filter(
-            ImovelModel.ativo == 1
-        )
-    )).scalars().all()
+    # imoveis: list[ImovelOut] = (await db_session.execute(
+    #     select(ImovelModel).filter(
+    #         ImovelModel.ativo == 1
+    #     )
+    # )).scalars().all()
+
+    statement = select(ImovelModel).filter(ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    imoveis = (await db_session.execute(statement)).scalars().all()
 
     return imoveis
 
 
-async def get_imovel(id: str, db_session: DatabaseDependency) -> ImovelOut:
-    # imovel: ImovelOut = (await db_session.execute(select(ImovelModel).filter_by(id=id))).scalars().first()
+async def get_imovel(id: str, db_session: DatabaseDependency, current_user: UsuarioModel) -> ImovelOut:
 
-    imovel: ImovelOut = (await db_session.execute(
-        select(ImovelModel).filter(
-            ImovelModel.id == id,
-            ImovelModel.ativo == 1
-        )
-    )).scalars().first()
+    # imovel: ImovelOut = (await db_session.execute(
+    #     select(ImovelModel).filter(
+    #         ImovelModel.id == id,
+    #         ImovelModel.ativo == 1
+    #     )
+    # )).scalars().first()
+
+    statement = select(ImovelModel).filter(ImovelModel.id == id, ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    imovel = (await db_session.execute(statement)).scalars().first()
 
     if not imovel:
         raise HTTPException(
@@ -88,17 +107,20 @@ async def get_imovel(id: str, db_session: DatabaseDependency) -> ImovelOut:
 async def patch_imovel(
         id:str,
         db_session: DatabaseDependency,
-        imovel_up: ImovelUpdate
+        imovel_up: ImovelUpdate, current_user: UsuarioModel
 ) -> ImovelOut:
 
-    # imovel: ImovelOut = (await db_session.execute(select(ImovelModel).filter_by(id=id))).scalars().first()
+    # imovel: ImovelOut = (await db_session.execute(
+    #     select(ImovelModel).filter(
+    #         ImovelModel.id == id,
+    #         ImovelModel.ativo == 1
+    #     )
+    # )).scalars().first()
 
-    imovel: ImovelOut = (await db_session.execute(
-        select(ImovelModel).filter(
-            ImovelModel.id == id,
-            ImovelModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ImovelModel).filter(ImovelModel.id == id, ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    imovel = (await db_session.execute(statement)).scalars().first()
 
     if not imovel:
         raise HTTPException(
@@ -111,21 +133,24 @@ async def patch_imovel(
 
     await db_session.commit()
     await db_session.refresh(imovel)
+    await registrar_log(db_session, "Atualização", f"Atualizou o imovel {imovel.id}", current_user)
 
     return imovel
 
 
-async def delete_imovel(id: str, db_session: DatabaseDependency) -> None:
-    # imovel: ImovelOut = (
-    #     await db_session.execute(select(ImovelModel).filter_by(id=id))
-    # ).scalars().first()
+async def delete_imovel(id: str, db_session: DatabaseDependency, current_user: UsuarioModel) -> None:
 
-    imovel: ImovelOut = (await db_session.execute(
-            select(ImovelModel).filter(
-                ImovelModel.id == id,
-                ImovelModel.ativo == 1
-            )
-    )).scalars().first()
+    # imovel: ImovelOut = (await db_session.execute(
+    #         select(ImovelModel).filter(
+    #             ImovelModel.id == id,
+    #             ImovelModel.ativo == 1
+    #         )
+    # )).scalars().first()
+
+    statement = select(ImovelModel).filter(ImovelModel.id == id, ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    imovel = (await db_session.execute(statement)).scalars().first()
 
     if not imovel:
         raise HTTPException(
@@ -138,3 +163,4 @@ async def delete_imovel(id: str, db_session: DatabaseDependency) -> None:
     imovel.ativo = 0
 
     await db_session.commit()
+    await registrar_log(db_session, "Exclusão", f"Excluiu o imóvel: {imovel.id}", current_user)

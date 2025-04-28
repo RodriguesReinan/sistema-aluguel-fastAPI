@@ -1,6 +1,5 @@
-from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, DateTime
+from sqlalchemy import Integer, String, CHAR
 from api.contrib.models import BaseModel
 
 

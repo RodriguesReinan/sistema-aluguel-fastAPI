@@ -9,17 +9,20 @@ from api.contrib.dependecies import DatabaseDependency
 from api.routes.inquilinos.models import InquilinoModel
 from api.routes.imoveis.models import ImovelModel
 from api.routes.contratos.models import ContratoModel
+from api.routes.usuarios.models.usuario_model import UsuarioModel
 from api.routes.proprietarios.models import ProprietarioModel
-from datetime import datetime
+from api.contrib.tenancy import filter_by_tenant
+from api.services.log_service import registrar_log
 import locale
 
 
-async def criar_contrato(db_session: DatabaseDependency, contrato_data: ContratoCreate):
+async def criar_contrato(db_session: DatabaseDependency, contrato_data: ContratoCreate, current_user: UsuarioModel):
     try:
-        contrato = ContratoModeloPdfModel(**contrato_data.dict())
+        contrato = ContratoModeloPdfModel(**contrato_data.dict(), tenant_id=current_user.id)
         db_session.add(contrato)
         await db_session.commit()
         await db_session.refresh(contrato)
+        await registrar_log(db_session, "Criação", f"Criou o o contrato: {contrato.id}", current_user)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -29,97 +32,117 @@ async def criar_contrato(db_session: DatabaseDependency, contrato_data: Contrato
     return contrato
 
 
-async def listar_contratos(db_session: DatabaseDependency):
-    contratos_pdf = (await db_session.execute(
-        select(ContratoModeloPdfModel).filter(ContratoModeloPdfModel.ativo == 1)
-    )).scalars().all()
+async def listar_contratos(db_session: DatabaseDependency, current_user: UsuarioModel):
+    # contratos_pdf = (await db_session.execute(
+    #     select(ContratoModeloPdfModel).filter(ContratoModeloPdfModel.ativo == 1)
+    # )).scalars().all()
+
+    statement = select(ContratoModeloPdfModel).filter(ContratoModeloPdfModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    contratos_pdf = (await db_session.execute(statement)).scalars().all()
 
     return contratos_pdf
 
 
-async def obter_contrato(db_session: DatabaseDependency, contrato_id: str):
+async def obter_contrato(db_session: DatabaseDependency, contrato_id: str, current_user: UsuarioModel):
+
     # result = (await db_session.execute(
-    #     select(ContratoModeloPdfModel).filter_by(id=contrato_id)
+    #     select(ContratoModeloPdfModel).filter(
+    #             ContratoModeloPdfModel.id == contrato_id,
+    #             ContratoModeloPdfModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    result = (await db_session.execute(
-        select(ContratoModeloPdfModel).filter(
-                ContratoModeloPdfModel.id == contrato_id,
-                ContratoModeloPdfModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ContratoModeloPdfModel).filter(ContratoModeloPdfModel.id == contrato_id,
+                                                      ContratoModeloPdfModel.ativo == 1)
+
+    statement = filter_by_tenant(statement, current_user.id)
+    result = (await db_session.execute(statement)).scalars().first()
 
     return result
 
 
-async def atualizar_modelo_contrato(db_session: DatabaseDependency, contrato_id: str, contrato_update: ContratoUpdate):
+async def atualizar_modelo_contrato(db_session: DatabaseDependency, contrato_id: str, contrato_update: ContratoUpdate,
+                                    current_user: UsuarioModel):
+
     # modelo = (await db_session.execute(
-    #     select(ContratoModeloPdfModel).filter_by(id=contrato_id)
+    #     select(ContratoModeloPdfModel).filter(
+    #             ContratoModeloPdfModel.id == contrato_id,
+    #             ContratoModeloPdfModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    modelo = (await db_session.execute(
-        select(ContratoModeloPdfModel).filter(
-                ContratoModeloPdfModel.id == contrato_id,
-                ContratoModeloPdfModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ContratoModeloPdfModel).filter(ContratoModeloPdfModel.id == contrato_id,
+                                                      ContratoModeloPdfModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    modelo = (await db_session.execute(statement)).scalars().first()
 
     if modelo:
         modelo.conteudo_html = contrato_update.conteudo_html
         await db_session.commit()
         await db_session.refresh(modelo)
+        await registrar_log(db_session, "Atualização", f"Atualizou o o contrato: {modelo.id}", current_user)
+
     return modelo
 
 
-async def montar_dados_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency) -> dict:
+async def montar_dados_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency,
+                                current_user: UsuarioModel) -> dict:
+
     # contrato_aluguel = (await db_session.execute(
-    #     select(ContratoModel).filter_by(id=contrato_aluguel_id)
+    #     select(ContratoModel).filter(
+    #         ContratoModel.id == contrato_aluguel_id,
+    #         ContratoModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    contrato_aluguel = (await db_session.execute(
-        select(ContratoModel).filter(
-            ContratoModel.id == contrato_aluguel_id,
-            ContratoModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ContratoModel).filter(ContratoModel.id == contrato_aluguel_id, ContratoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    contrato_aluguel = (await db_session.execute(statement)).scalars().first()
 
     if not contrato_aluguel:
         raise HTTPException(
             status_code=404,
             detail='Contrato não encontrado.'
         )
+
     # inquilino = (await db_session.execute(
-    #     select(InquilinoModel).filter_by(pk_id=contrato_aluguel.inquilino_id)
+    #     select(InquilinoModel).filter(
+    #         InquilinoModel.pk_id == contrato_aluguel.inquilino_id,
+    #         InquilinoModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    inquilino = (await db_session.execute(
-        select(InquilinoModel).filter(
-            InquilinoModel.pk_id == contrato_aluguel.inquilino_id,
-            InquilinoModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(InquilinoModel).filter(InquilinoModel.pk_id == contrato_aluguel.inquilino_id,
+                                              InquilinoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    inquilino = (await db_session.execute(statement)).scalars().first()
 
     # imovel = (await db_session.execute(
-    #     select(ImovelModel).filter_by(pk_id=contrato_aluguel.imovel_id)
+    #     select(ImovelModel).filter(
+    #         ImovelModel.pk_id == contrato_aluguel.imovel_id,
+    #         ImovelModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    imovel = (await db_session.execute(
-        select(ImovelModel).filter(
-            ImovelModel.pk_id == contrato_aluguel.imovel_id,
-            ImovelModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ImovelModel).filter(ImovelModel.pk_id == contrato_aluguel.imovel_id,
+                                           ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    imovel = (await db_session.execute(statement)).scalars().first()
 
     # proprietario = (await db_session.execute(
-    #     select(ProprietarioModel).filter_by(pk_id=imovel.proprietario_id)
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.pk_id == imovel.proprietario_id,
+    #         ProprietarioModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    proprietario = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.pk_id == imovel.proprietario_id,
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ProprietarioModel).filter(ProprietarioModel.pk_id == imovel.proprietario_id,
+                                                 ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    proprietario = (await db_session.execute(statement)).scalars().first()
 
     # Configura o locale para português do Brasil
     locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')

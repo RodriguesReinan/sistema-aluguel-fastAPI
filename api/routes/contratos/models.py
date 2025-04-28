@@ -1,9 +1,8 @@
 from datetime import date
 from api.contrib.models import BaseModel
-from sqlalchemy import Integer, Float, Date, ForeignKey, Enum, String
+from sqlalchemy import Integer, Float, Date, ForeignKey, Enum, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-# from api.routes.usuarios.models.usuario_model import UsuarioModel
+from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
 
 
 class ContratoModel(BaseModel):
@@ -14,7 +13,7 @@ class ContratoModel(BaseModel):
     data_fim: Mapped[date] = mapped_column(Date, nullable=False)
     dia_vencimento: Mapped[int] = mapped_column(Integer, nullable=False)
     valor_mensal: Mapped[float] = mapped_column(Float, nullable=False)
-    taxa_limpeza: Mapped[float] = mapped_column(Float, nullable=False)
+    taxa_limpeza: Mapped[float] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(Enum("ativo", "encerrado", "pendente", name="status_enum"), nullable=False)
 
     imovel: Mapped['ImovelModel'] = relationship(back_populates='contratos', lazy='selectin')
@@ -27,3 +26,5 @@ class ContratoModel(BaseModel):
 
     usuario: Mapped['UsuarioModel'] = relationship(back_populates='contratos', lazy='selectin')
     usuario_id: Mapped[int] = mapped_column(ForeignKey('usuarios.pk_id'), nullable=False)
+
+    tenant_id: Mapped[CHAR] = mapped_column(MYSQL_CHAR(36), nullable=False)

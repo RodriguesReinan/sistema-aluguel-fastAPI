@@ -1,7 +1,8 @@
 from datetime import datetime
 from api.contrib.models import BaseModel
-from sqlalchemy import Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Integer, String, CHAR, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
 
 
 class NotificacaoModel(BaseModel):
@@ -31,3 +32,5 @@ class NotificacaoModel(BaseModel):
     status: Mapped[str] = mapped_column(
         Enum("pendente", "enviado-nao-visualizado", "erro", "enviado-visualizado", name="status_notificacao"),
         default="pendente", nullable=False)
+
+    tenant_id: Mapped[CHAR] = mapped_column(MYSQL_CHAR(36), nullable=False)

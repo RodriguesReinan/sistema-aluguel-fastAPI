@@ -2,6 +2,7 @@ from fastapi import status
 from api.routes.notificacao.models import NotificacaoModel
 from api.routes.notificacao.schemas import NotificacaoIn, NotificacaoOut
 from api.routes.usuarios.models.usuario_model import UsuarioModel
+from api.contrib.tenancy import filter_by_tenant
 from sqlalchemy.future import select
 from fastapi import HTTPException
 from api.contrib.dependecies import DatabaseDependency
@@ -43,7 +44,8 @@ def enviar_notificacao_push(token: str, titulo: str, mensagem: str):
         return {"status": "erro", "message": str(e)}
 
 
-async def send_notification(db_session: DatabaseDependency, notification: NotificacaoIn) -> NotificacaoOut:
+async def send_notification(db_session: DatabaseDependency, notification: NotificacaoIn,
+                            current_user: UsuarioModel) -> NotificacaoOut:
     try:
 
         # Enviar via Firebase SDK
@@ -66,6 +68,7 @@ async def send_notification(db_session: DatabaseDependency, notification: Notifi
             mensagem=notification.mensagem,
             status='enviado-nao-visualizado',
             usuario_id=notification.usuario_id,
+            tenant_id=current_user.id
             # dispositivo_token=notification.dispositivo_token  # se eu quiser salvar o token no banco, mudar o model
         )
         db_session.add(notificacao)
@@ -85,40 +88,76 @@ async def send_notification(db_session: DatabaseDependency, notification: Notifi
         )
 
 
-async def get_notificacoes(usuario_id: int, db_session: DatabaseDependency) -> list[NotificacaoOut]:
-    notificacoes: list[NotificacaoOut] = (await db_session.execute(
-        select(NotificacaoModel).filter(NotificacaoModel.usuario_id == usuario_id).order_by(
-            NotificacaoModel.data_envio.desc()
+async def get_notificacoes(usuario_id: int, db_session: DatabaseDependency,
+                           current_user: UsuarioModel) -> list[NotificacaoOut]:
+    # notificacoes: list[NotificacaoOut] = (await db_session.execute(
+    #     select(NotificacaoModel).filter(NotificacaoModel.usuario_id == usuario_id).order_by(
+    #         NotificacaoModel.data_envio.desc()
+    #     )
+    # )).scalars().all()
+
+    statement = select(NotificacaoModel).filter(NotificacaoModel.usuario_id == usuario_id).order_by(
+        NotificacaoModel.data_envio.desc()
+    )
+    statement = filter_by_tenant(statement, current_user.id)
+    notificacoes = (await db_session.execute(statement)).scalars().all()
+
+    return notificacoes
+
+
+async def get_notficacao_nao_visualizadas(usuario_id: str, db_session: DatabaseDependency,
+                                          current_user: UsuarioModel) -> list[NotificacaoOut]:
+    # usuario = (await db_session.execute(
+    #     select(UsuarioModel).filter_by(id=usuario_id)
+    # )).scalars().first()
+
+    statement = select(UsuarioModel).filter(UsuarioModel.id == usuario_id, UsuarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    usuario = (await db_session.execute(statement)).scalars().first()
+
+    # notificacoes: list[NotificacaoOut] = (await db_session.execute(
+    #     select(NotificacaoModel)
+    #     .filter(NotificacaoModel.usuario_id == usuario.pk_id)
+    #     .filter(NotificacaoModel.status != 'enviado-visualizado')
+    #     .order_by(NotificacaoModel.data_envio.desc())
+    # )).scalars().all()
+
+    statement = (
+        select(NotificacaoModel).filter(
+            NotificacaoModel.usuario_id == usuario.pk_id,
+            NotificacaoModel.status != 'enviado-visualizado',
+            NotificacaoModel.ativo == 1
         )
-    )).scalars().all()
+    )
+    statement = filter_by_tenant(statement, current_user.id)
+    notificacoes = (await db_session.execute(statement)).scalars().all()
 
     return notificacoes
 
 
-async def get_notficacao_nao_visualizadas(usuario_id: str, db_session: DatabaseDependency) -> list[NotificacaoOut]:
-    usuario = (await db_session.execute(
-        select(UsuarioModel).filter_by(id=usuario_id)
-    )).scalars().first()
+async def patch_marcar_como_visualizada(notificacao_id, usuario_id, db_session, current_user: UsuarioModel):
+    # usuario = (await db_session.execute(
+    #     select(UsuarioModel).filter_by(id=usuario_id)
+    # )).scalars().first()
 
-    notificacoes: list[NotificacaoOut] = (await db_session.execute(
-        select(NotificacaoModel)
-        .filter(NotificacaoModel.usuario_id == usuario.pk_id)
-        .filter(NotificacaoModel.status != 'enviado-visualizado')
-        .order_by(NotificacaoModel.data_envio.desc())
-    )).scalars().all()
+    statement = select(UsuarioModel).filter(UsuarioModel.id == usuario_id, UsuarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
 
-    return notificacoes
+    usuario = (await db_session.execute(statement)).scalars().first()
 
+    # notificacao = (await db_session.execute(
+    #     select(NotificacaoModel)
+    #     .filter(NotificacaoModel.id == notificacao_id)
+    # )).scalars().first()
 
-async def patch_marcar_como_visualizada(notificacao_id, usuario_id, db_session):
-    usuario = (await db_session.execute(
-        select(UsuarioModel).filter_by(id=usuario_id)
-    )).scalars().first()
-
-    notificacao = (await db_session.execute(
-        select(NotificacaoModel)
-        .filter(NotificacaoModel.id == notificacao_id)
-    )).scalars().first()
+    statement = (
+        select(NotificacaoModel).filter(
+            NotificacaoModel.id == notificacao_id,
+            NotificacaoModel.ativo == 1
+        )
+    )
+    statement = filter_by_tenant(statement, current_user.id)
+    notificacao = (await db_session.execute(statement)).scalars().first()
 
     if not notificacao or notificacao.usuario_id != usuario.pk_id:
         print(f'dentro do if not notificação: notificação id: {notificacao.usuario_id} - usuario_id: {usuario_id}')

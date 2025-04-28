@@ -8,20 +8,31 @@ from api.routes.proprietarios.models import ProprietarioModel
 from api.routes.proprietarios.schemas import ProprietarioIn, ProprietarioOut, ProprietarioUpdate
 from sqlalchemy.future import select
 from api.contrib.dependecies import DatabaseDependency
+from api.routes.usuarios.models.usuario_model import UsuarioModel
+from api.contrib.tenancy import filter_by_tenant
+from api.services.log_service import registrar_log
 
 
 async def create_proprietario(
         db_session: DatabaseDependency,
+        current_user: UsuarioModel,
         proprietario_in: ProprietarioIn = Body(...)
         ) -> ProprietarioOut:
 
     try:
         proprietario_out = ProprietarioOut(id=str(uuid4()), **proprietario_in.model_dump())
-        proprietario_model = ProprietarioModel(**proprietario_out.model_dump())
+        proprietario_model = ProprietarioModel(**proprietario_out.model_dump(), tenant_id=current_user.id)
+
+        # verifica se estamos recebendo strings vazias, do frontend
+        for key, value in proprietario_out.model_dump().items():
+            if value is None or (isinstance(value, str) and value.strip() == ""):
+                raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
         db_session.add(proprietario_model)
         await db_session.commit()
         await db_session.refresh(proprietario_model)
+        await registrar_log(db_session, "Criação", f"Criou o proprietário: {proprietario_model.nome}", current_user)
+
     except IntegrityError as e:
         error_message = str(e)
 
@@ -41,29 +52,35 @@ async def create_proprietario(
     return proprietario_out
 
 
-async def get_all_proprietarios(db_session: DatabaseDependency) -> list[ProprietarioOut]:
-    # proprietarios: list[ProprietarioOut] = (await db_session.execute(select(ProprietarioModel))).scalars().all()
+async def get_all_proprietarios(db_session: DatabaseDependency, current_user: UsuarioModel) -> list[ProprietarioOut]:
 
-    proprietarios: list[ProprietarioOut] = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().all()
+    # proprietarios: list[ProprietarioOut] = (await db_session.execute(
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.ativo == 1
+    #     )
+    # )).scalars().all()
+
+    statement = select(ProprietarioModel).filter(ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    proprietarios = (await db_session.execute(statement)).scalars().all()
 
     return proprietarios
 
 
-async def get_proprietario(id: str, db_session: DatabaseDependency) -> ProprietarioOut:
+async def get_proprietario(id: str, db_session: DatabaseDependency, current_user: UsuarioModel) -> ProprietarioOut:
+
     # proprietario: ProprietarioOut = (await db_session.execute(
-    #     select(ProprietarioModel).filter_by(id=id)
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.id == id,
+    #         ProprietarioModel.ativo == 1
+    #     )
     # )).scalars().first()
 
-    proprietario: ProprietarioOut = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.id == id,
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ProprietarioModel).filter(ProprietarioModel.id == id, ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    proprietario = (await db_session.execute(statement)).scalars().first()
 
     if not proprietario:
         raise HTTPException(
@@ -77,18 +94,21 @@ async def get_proprietario(id: str, db_session: DatabaseDependency) -> Proprieta
 async def patch_proprietario(
         id:str,
         db_session: DatabaseDependency,
-        proprietario_up: ProprietarioUpdate
+        proprietario_up: ProprietarioUpdate,
+        current_user: UsuarioModel
 ) -> ProprietarioOut:
 
-    # proprietario: ProprietarioOut = (await db_session.execute(select(ProprietarioModel).filter_by(id=id))
-    #                                  ).scalars().first()
+    # proprietario: ProprietarioOut = (await db_session.execute(
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.id == id,
+    #         ProprietarioModel.ativo == 1
+    #     )
+    # )).scalars().first()
 
-    proprietario: ProprietarioOut = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.id == id,
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().first()
+    statement = select(ProprietarioModel).filter(ProprietarioModel.id == id, ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    proprietario = (await db_session.execute(statement)).scalars().first()
 
     if not proprietario:
         raise HTTPException(
@@ -101,21 +121,24 @@ async def patch_proprietario(
 
     await db_session.commit()
     await db_session.refresh(proprietario)
+    await registrar_log(db_session, "Atualização", f"Atualizou o proprietário: {proprietario.nome}", current_user)
 
     return proprietario
 
 
-async def delete_proprietario(id: str, db_session: DatabaseDependency) -> None:
-    # proprietario: ProprietarioOut = (
-    #     await db_session.execute(select(ProprietarioModel).filter_by(id=id))
-    # ).scalars().first()
+async def delete_proprietario(id: str, db_session: DatabaseDependency, current_user: UsuarioModel) -> None:
 
-    proprietario: ProprietarioOut = (await db_session.execute(
-        select(ProprietarioModel).filter(
-            ProprietarioModel.id == id,
-            ProprietarioModel.ativo == 1
-        )
-    )).scalars().first()
+    # proprietario: ProprietarioOut = (await db_session.execute(
+    #     select(ProprietarioModel).filter(
+    #         ProprietarioModel.id == id,
+    #         ProprietarioModel.ativo == 1
+    #     )
+    # )).scalars().first()
+
+    statement = select(ProprietarioModel).filter(ProprietarioModel.id == id, ProprietarioModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    proprietario = (await db_session.execute(statement)).scalars().first()
 
     if not proprietario:
         raise HTTPException(
@@ -128,3 +151,4 @@ async def delete_proprietario(id: str, db_session: DatabaseDependency) -> None:
     proprietario.ativo = 0
 
     await db_session.commit()
+    await registrar_log(db_session, "Exclusão", f"Excluiu o proprietário: {proprietario.nome}", current_user)

@@ -1,7 +1,6 @@
-from datetime import datetime
-
+from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
 from api.contrib.models import BaseModel
-from sqlalchemy import Integer, String, DateTime
+from sqlalchemy import Integer, String, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -25,3 +24,5 @@ class ProprietarioModel(BaseModel):
     chave_pix: Mapped[str] = mapped_column(String(20))
 
     imoveis: Mapped[list['ImovelModel']] = relationship(back_populates='proprietario', lazy='selectin')
+
+    tenant_id: Mapped[CHAR] = mapped_column(MYSQL_CHAR(36), nullable=False)

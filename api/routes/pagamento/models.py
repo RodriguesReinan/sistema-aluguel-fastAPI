@@ -1,7 +1,8 @@
 from datetime import date
 from api.contrib.models import BaseModel
-from sqlalchemy import Integer, String, Float, Date, ForeignKey, Enum
+from sqlalchemy import Integer, CHAR, Float, Date, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
 
 
 class PagamentoModel(BaseModel):
@@ -19,4 +20,6 @@ class PagamentoModel(BaseModel):
     contrato_id: Mapped[int] = mapped_column(ForeignKey('contratos.pk_id'), nullable=False)
 
     notificacoes: Mapped[list['NotificacaoModel']] = relationship(back_populates='pagamento')
+
+    tenant_id: Mapped[CHAR] = mapped_column(MYSQL_CHAR(36), nullable=False)
 

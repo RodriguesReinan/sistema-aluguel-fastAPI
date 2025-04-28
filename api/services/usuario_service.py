@@ -1,8 +1,5 @@
-from datetime import datetime
 from uuid import uuid4
-
 from fastapi.security import OAuth2PasswordRequestForm
-
 from api.routes.usuarios.schemas.usuario_schema import UserIn, Token, UserLogin, UserOut
 from fastapi import status, Body, HTTPException
 from api.routes.usuarios.models.usuario_model import UsuarioModel
@@ -31,6 +28,12 @@ async def register(
                               email=usuario_in.email,
                               hashed_password=hashed_password
                               )
+
+    # verifica se estamos recebendo strings vazias, do frontend
+    for key in user_model.__table__.columns.keys():
+        value = getattr(user_model, key)
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
     db_session.add(user_model)
     await db_session.commit()

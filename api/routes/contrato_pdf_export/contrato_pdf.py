@@ -1,8 +1,10 @@
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from api.routes.contrato_pdf_export.schemas import ContratoCreate, ContratoResponse, ContratoUpdate
 from api.services import contrato_pdf_service
 from api.contrib.dependecies import DatabaseDependency
+from api.routes.usuarios.dependecies import get_current_user
+from api.routes.usuarios.models.usuario_model import UsuarioModel
 
 from api.utils.pdf_generator import preencher_html, gerar_pdf_a_partir_do_html
 import io
@@ -15,8 +17,9 @@ router = APIRouter()
              status_code=status.HTTP_201_CREATED,
              response_model=ContratoResponse
              )
-async def criar(contrato: ContratoCreate, db_session: DatabaseDependency):
-    return await contrato_pdf_service.criar_contrato(db_session, contrato)
+async def criar(contrato: ContratoCreate, db_session: DatabaseDependency,
+                current_user: UsuarioModel = Depends(get_current_user)):
+    return await contrato_pdf_service.criar_contrato(db_session, contrato, current_user)
 
 
 @router.get("/",
@@ -24,8 +27,8 @@ async def criar(contrato: ContratoCreate, db_session: DatabaseDependency):
             status_code=status.HTTP_200_OK,
             response_model=list[ContratoResponse]
             )
-async def listar(db_session: DatabaseDependency):
-    return await contrato_pdf_service.listar_contratos(db_session)
+async def listar(db_session: DatabaseDependency, current_user: UsuarioModel = Depends(get_current_user)):
+    return await contrato_pdf_service.listar_contratos(db_session, current_user)
 
 
 @router.get("/{contrato_id}",
@@ -33,8 +36,8 @@ async def listar(db_session: DatabaseDependency):
             status_code=status.HTTP_200_OK,
             response_model=ContratoResponse
             )
-async def obter(contrato_id: str, db_session: DatabaseDependency):
-    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id)
+async def obter(contrato_id: str, db_session: DatabaseDependency, current_user: UsuarioModel = Depends(get_current_user)):
+    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id, current_user)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
     return contrato
@@ -45,14 +48,14 @@ async def obter(contrato_id: str, db_session: DatabaseDependency):
                      'variáveis {{nome_inqulino}}',
              status_code=status.HTTP_201_CREATED
              )
-async def preencher_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency):
-    print('contrato_aluguel_id: ', contrato_aluguel_id)
-    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id)
+async def preencher_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency,
+                             current_user: UsuarioModel = Depends(get_current_user)):
+
+    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id, current_user)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
 
-    # dados = contrato_pdf_service.montar_dados_contrato(contrato_id, db_session)   '217eb48f-5e17-4797-87e6-ff1bbc2a2e01', '93a9ae3a-4f34-4899-ac0d-4f7b436532f7',
-    dados = await contrato_pdf_service.montar_dados_contrato(contrato_id, contrato_aluguel_id, db_session)
+    dados = await contrato_pdf_service.montar_dados_contrato(contrato_id, contrato_aluguel_id, db_session, current_user)
     html_preenchido = preencher_html(contrato.conteudo_html, dados)
 
     # Gera o PDF a partir do HTML
@@ -68,14 +71,15 @@ async def preencher_contrato(contrato_id: str, contrato_aluguel_id: str, db_sess
             summary='Monta o html para ser exibido no frontend',
             status_code=status.HTTP_200_OK
             )
-async def obter_html_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency):
-    print('contrato_aluguel_id: ', contrato_aluguel_id)
-    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id)
+async def obter_html_contrato(contrato_id: str, contrato_aluguel_id: str, db_session: DatabaseDependency,
+                              current_user: UsuarioModel = Depends(get_current_user)):
+
+    contrato = await contrato_pdf_service.obter_contrato(db_session, contrato_id, current_user)
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
 
     # dados = contrato_pdf_service.montar_dados_contrato(contrato_id, db_session)  # usa sua função que monta os dados
-    dados = await contrato_pdf_service.montar_dados_contrato(contrato_id, contrato_aluguel_id, db_session)
+    dados = await contrato_pdf_service.montar_dados_contrato(contrato_id, contrato_aluguel_id, db_session, current_user)
     html_preenchido = preencher_html(contrato.conteudo_html, dados)
 
     return {"html": html_preenchido}
@@ -85,8 +89,9 @@ async def obter_html_contrato(contrato_id: str, contrato_aluguel_id: str, db_ses
             summary='Editar um modelo de contrato redigido e salvo no banco de dados',
             status_code=status.HTTP_200_OK
             )
-async def editar_modelo_contrato(contrato_id: str, contrato: ContratoUpdate, db_session: DatabaseDependency):
-    modelo = await contrato_pdf_service.atualizar_modelo_contrato(db_session, contrato_id, contrato)
+async def editar_modelo_contrato(contrato_id: str, contrato: ContratoUpdate, db_session: DatabaseDependency,
+                                 current_user: UsuarioModel = Depends(get_current_user)):
+    modelo = await contrato_pdf_service.atualizar_modelo_contrato(db_session, contrato_id, contrato, current_user)
     if not modelo:
         raise HTTPException(status_code=404, detail="Modelo de contrato não encontrado")
     return {"mensagem": "Modelo atualizado com sucesso"}

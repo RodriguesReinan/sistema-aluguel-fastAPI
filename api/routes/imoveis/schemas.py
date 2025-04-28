@@ -1,4 +1,4 @@
-from pydantic import Field, PositiveFloat
+from pydantic import Field, PositiveFloat, field_validator
 from typing import Annotated, Optional, Literal
 from api.contrib.schemas import BaseSchema, OutMixin
 from api.routes.proprietarios.schemas import ProprietarioImovel
@@ -21,6 +21,12 @@ class Imovel(BaseSchema):
                                                                                   'ou comercial')]
 
     proprietario: Annotated[ProprietarioImovel, Field(description='Proprietário do imóvel')]
+
+    @field_validator('*')
+    def check_empty_strings(cls, value, info):
+        if isinstance(value, str) and value.strip() == "":
+            raise ValueError(f"O campo '{info.field_name}' não pode ser vazio.")
+        return value
 
 
 class ImovelContrato(OutMixin):

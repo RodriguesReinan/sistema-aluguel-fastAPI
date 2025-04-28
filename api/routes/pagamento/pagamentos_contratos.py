@@ -7,9 +7,12 @@ from api.contrib.dependecies import DatabaseDependency
 from sqlalchemy.future import select
 from fastapi import HTTPException, status
 import calendar
+from api.routes.usuarios.models.usuario_model import UsuarioModel
+from api.contrib.tenancy import filter_by_tenant
 
 
-async def criar_pagamentos_para_contratos(contrato: ContratoModel, db_session: DatabaseDependency):
+async def criar_pagamentos_para_contratos(contrato: ContratoModel, db_session: DatabaseDependency,
+                                          current_user: UsuarioModel):
     pagamentos = []
 
     def ajustar_data_vencimento(base_date: date, dia_vencimento: int) -> date:
@@ -30,7 +33,6 @@ async def criar_pagamentos_para_contratos(contrato: ContratoModel, db_session: D
 
         return base_date.replace(day=dia)
 
-    # data_vencimento = contrato.data_inicio.replace(day=contrato.dia_vencimento)
     data_vencimento = ajustar_data_vencimento(contrato.data_inicio, int(contrato.dia_vencimento))
 
     while data_vencimento <= contrato.data_fim:
@@ -40,7 +42,8 @@ async def criar_pagamentos_para_contratos(contrato: ContratoModel, db_session: D
             data_vencimento=data_vencimento,
             data_pagamento=None,
             metodo_pagamento=None,
-            status='pendente'
+            status='pendente',
+            tenant_id=current_user.id
         )
         pagamentos.append(pagamento)
 
@@ -48,23 +51,31 @@ async def criar_pagamentos_para_contratos(contrato: ContratoModel, db_session: D
         # Próximo mês, ajustando novamente o dia se necessário
         proxima_data_base = data_vencimento + relativedelta(months=1)
         data_vencimento = ajustar_data_vencimento(proxima_data_base, contrato.dia_vencimento)
-        # data_vencimento += relativedelta(months=1)
 
     db_session.add_all(pagamentos)
-    await db_session.commit()
+    # await db_session.commit()
 
 
-async def get_all_pagamentos(db_session: DatabaseDependency) -> list[PagamentoOut]:
-    pagamentos: list[PagamentoOut] = (await db_session.execute(select(PagamentoModel))).scalars().all()
+async def get_all_pagamentos(db_session: DatabaseDependency, current_user: UsuarioModel) -> list[PagamentoOut]:
+    # pagamentos: list[PagamentoOut] = (await db_session.execute(select(PagamentoModel))).scalars().all()
+
+    statement = select(PagamentoModel).filter(PagamentoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    pagamentos = (await db_session.execute(statement)).scalars().all()
 
     return pagamentos
 
 
-async def get_pagamento_por_contrato(contrato_id: str, db_session: DatabaseDependency) -> list[PagamentoOut]:
+async def get_pagamento_por_contrato(contrato_id: str, db_session: DatabaseDependency,
+                                     current_user: UsuarioModel) -> list[PagamentoOut]:
     # Buscar contrato pelo UUID para obter o pk_id
-    contrato = (await db_session.execute(
-        select(ContratoModel).filter_by(id=contrato_id)
-    )).scalars().first()
+    # contrato = (await db_session.execute(
+    #     select(ContratoModel).filter_by(id=contrato_id)
+    # )).scalars().first()
+
+    statement = select(ContratoModel).filter(ContratoModel.id == contrato_id, ContratoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    contrato = (await db_session.execute(statement)).scalars().first()
 
     if not contrato:
         raise HTTPException(
@@ -73,9 +84,13 @@ async def get_pagamento_por_contrato(contrato_id: str, db_session: DatabaseDepen
         )
 
     # Agora buscar os pagamentos pelo pk_id
-    pagamentos: list[PagamentoOut] = (await db_session.execute(
-        select(PagamentoModel).filter_by(contrato_id=contrato.pk_id)
-    )).scalars().all()
+    # pagamentos: list[PagamentoOut] = (await db_session.execute(
+    #     select(PagamentoModel).filter_by(contrato_id=contrato.pk_id)
+    # )).scalars().all()
+
+    statement = select(PagamentoModel).filter(PagamentoModel.contrato_id == contrato.pk_id, PagamentoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    pagamentos = (await db_session.execute(statement)).scalars().all()
 
     if not pagamentos:
         raise HTTPException(
@@ -89,12 +104,17 @@ async def get_pagamento_por_contrato(contrato_id: str, db_session: DatabaseDepen
 async def patch_pagamento(
         pagamento_id: str,
         db_session: DatabaseDependency,
-        pagamento_up: PagamentoUpdate
+        pagamento_up: PagamentoUpdate,
+        current_user: UsuarioModel
         ) -> PagamentoOut:
 
-    pagamento: PagamentoOut = (await db_session.execute(
-        select(PagamentoModel).filter_by(id=pagamento_id)
-    )).scalars().first()
+    # pagamento: PagamentoOut = (await db_session.execute(
+    #     select(PagamentoModel).filter_by(id=pagamento_id)
+    # )).scalars().first()
+
+    statement = select(PagamentoModel).filter(PagamentoModel.id == pagamento_id, PagamentoModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+    pagamento = (await db_session.execute(statement)).scalars().first()
 
     if not pagamento:
         raise HTTPException(

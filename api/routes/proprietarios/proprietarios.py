@@ -4,6 +4,7 @@ from api.services.proprietario_service import (create_proprietario, get_all_prop
                                                patch_proprietario, delete_proprietario)
 from api.contrib.dependecies import DatabaseDependency
 from api.routes.usuarios.dependecies import get_current_user
+from api.routes.usuarios.models.usuario_model import UsuarioModel
 
 
 router = APIRouter()
@@ -16,8 +17,8 @@ router = APIRouter()
     response_model=ProprietarioOut
 )
 async def criar_proprietario(proprietario: ProprietarioIn, db_session: DatabaseDependency,
-                             ):
-    return await create_proprietario(db_session, proprietario)
+                             current_user: UsuarioModel = Depends(get_current_user)):
+    return await create_proprietario(db_session, current_user, proprietario)
 
 
 @router.get(
@@ -26,8 +27,8 @@ async def criar_proprietario(proprietario: ProprietarioIn, db_session: DatabaseD
     status_code=status.HTTP_200_OK,
     response_model=list[ProprietarioOut],
 )
-async def listar_proprietarios(db_session: DatabaseDependency):
-    return await get_all_proprietarios(db_session)
+async def listar_proprietarios(db_session: DatabaseDependency, current_user: UsuarioModel = Depends(get_current_user)):
+    return await get_all_proprietarios(db_session, current_user)
 
 
 @router.get(
@@ -36,8 +37,9 @@ async def listar_proprietarios(db_session: DatabaseDependency):
     status_code=status.HTTP_200_OK,
     response_model=ProprietarioOut,
 )
-async def listar_proprietario_id(id:str, db_session: DatabaseDependency):
-    return await get_proprietario(id, db_session)
+async def listar_proprietario_id(id:str, db_session: DatabaseDependency,
+                                 current_user: UsuarioModel = Depends(get_current_user)):
+    return await get_proprietario(id, db_session, current_user)
 
 
 @router.patch(
@@ -46,8 +48,9 @@ async def listar_proprietario_id(id:str, db_session: DatabaseDependency):
     status_code=status.HTTP_200_OK,
     response_model=ProprietarioOut,
 )
-async def edite_proprietario(id:str, db_session: DatabaseDependency, proprietario_up: ProprietarioUpdate):
-    return await patch_proprietario(id, db_session, proprietario_up)
+async def editar_proprietario(id:str, db_session: DatabaseDependency, proprietario_up: ProprietarioUpdate,
+                              current_user: UsuarioModel = Depends(get_current_user)):
+    return await patch_proprietario(id, db_session, proprietario_up, current_user)
 
 
 @router.delete(
@@ -55,5 +58,5 @@ async def edite_proprietario(id:str, db_session: DatabaseDependency, proprietari
     summary='Deletar um proprietário pelo id.',
     status_code=status.HTTP_204_NO_CONTENT
 )
-async def deletar_proprietario(id:str, db_session: DatabaseDependency):
-    return await delete_proprietario(id, db_session)
+async def deletar_proprietario(id:str, db_session: DatabaseDependency, current_user: UsuarioModel = Depends(get_current_user)):
+    return await delete_proprietario(id, db_session, current_user)

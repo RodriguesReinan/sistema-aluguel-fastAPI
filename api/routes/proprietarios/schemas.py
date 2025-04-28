@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing import Annotated, Optional
 from api.contrib.schemas import BaseSchema, OutMixin
 
@@ -21,6 +21,12 @@ class Proprietario(BaseSchema):
     profissao_ocupacao: Annotated[str, Field(description='Profissão/Ocupação do proprietário',
                                              example='Servidor Público', max_length=50)]
     email: Annotated[str, Field(description='E-mail do proprietário', example='proprietario@gmail.com', max_length=50)]
+
+    @field_validator('*')
+    def check_empty_strings(cls, value, info):
+        if isinstance(value, str) and value.strip() == "":
+            raise ValueError(f"O campo '{info.field_name}' não pode ser vazio.")
+        return value
 
 
 class ProprietarioImovel(BaseSchema):
