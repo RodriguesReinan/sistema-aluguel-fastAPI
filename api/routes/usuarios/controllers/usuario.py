@@ -14,7 +14,9 @@ router = APIRouter()
     summary='Criar um usuário',
     status_code=status.HTTP_201_CREATED,
     response_model=Token)
-async def criar_usuario(db_session: DatabaseDependency, usuario_in: UserIn):
+async def criar_usuario(db_session: DatabaseDependency, usuario_in: UserIn,
+                        current_user: UserOut = Depends(get_current_user)
+                        ):
     return await register(db_session, usuario_in)
 
 
@@ -32,7 +34,7 @@ async def fazer_login(db_session: DatabaseDependency, form_data: OAuth2PasswordR
     status_code=status.HTTP_200_OK,
     response_model=list[UserOut]
 )
-async def listar_usuarios(db_session: DatabaseDependency):
+async def listar_usuarios(db_session: DatabaseDependency, current_user: UserOut = Depends(get_current_user)):
     return await get_all_usuarios(db_session)
 
 
@@ -42,7 +44,7 @@ async def listar_usuarios(db_session: DatabaseDependency):
     status_code=status.HTTP_200_OK,
     response_model=UserOut,
 )
-async def listar_usuario_id(id:str, db_session: DatabaseDependency):
+async def listar_usuario_id(id:str, db_session: DatabaseDependency, current_user: UserOut = Depends(get_current_user)):
     return await get_usuario(id, db_session)
 
 

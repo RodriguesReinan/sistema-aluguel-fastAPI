@@ -45,7 +45,7 @@ def enviar_notificacao_push(token: str, titulo: str, mensagem: str):
 
 
 async def send_notification(db_session: DatabaseDependency, notification: NotificacaoIn,
-                            current_user: UsuarioModel) -> NotificacaoOut:
+                            ) -> NotificacaoOut:
     try:
 
         # Enviar via Firebase SDK
@@ -68,7 +68,8 @@ async def send_notification(db_session: DatabaseDependency, notification: Notifi
             mensagem=notification.mensagem,
             status='enviado-nao-visualizado',
             usuario_id=notification.usuario_id,
-            tenant_id=current_user.id
+            tenant_id=notification.tenant_id
+            # tenant_id=current_user.id
             # dispositivo_token=notification.dispositivo_token  # se eu quiser salvar o token no banco, mudar o model
         )
         db_session.add(notificacao)

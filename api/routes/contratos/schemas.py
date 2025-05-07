@@ -18,7 +18,8 @@ class Contrato(BaseSchema):
     dia_vencimento: Annotated[int, Field(ge=1, le=31, description='Dia de vencimento do aluguel, de cada mês',
                                           example='10')]
     valor_mensal: Annotated[PositiveFloat, Field(description='Valor mensal do aluguel em reais', example=750.00)]
-    taxa_limpeza: Annotated[PositiveFloat, Field(description='Taxa de limpeza do imóvel em reais', example=50.00)]
+    taxa_limpeza: Annotated[Optional[PositiveFloat], Field(None, description='Taxa de limpeza do imóvel em reais',
+                                                           example=50.00)]
     status: Annotated[Literal["ativo", "encerrado", "pendente"], Field(description='Status do contratos')]
 
     inquilino: Annotated[InquilinoContrato, Field(description='Inquilino do imóvel')]
@@ -61,9 +62,9 @@ class ContratoPagamento(OutMixin):
 
 
 class ContratoUpdate(BaseSchema):
-    data_fim: Annotated[Optional[date], Field(description='Data final do contratos de aluguel', example='2026-03-05')]
-    dia_vencimento: Annotated[Optional[int], Field(description='Dia de vencimento do aluguel, de cada mês', example='10')]
-    valor_mensal: Annotated[Optional[PositiveFloat], Field(description='Valor mensal do aluguel em reais', example=750.00)]
-    status: Annotated[Optional[Literal["ativo", "encerrado", "pendente"]], Field(description='Status do contratos')]
-    taxa_limpeza: Annotated[Optional[PositiveFloat], Field(description='Taxa de limpeza do imóvel em reais', example=50.00)]
+    data_fim: Annotated[Optional[date], Field(None, description='Data final do contratos de aluguel', example='2026-03-05')]
+    dia_vencimento: Annotated[Optional[int], Field(None, description='Dia de vencimento do aluguel, de cada mês', example='10')]
+    valor_mensal: Annotated[Optional[PositiveFloat], Field(None, description='Valor mensal do aluguel em reais', example=750.00)]
+    status: Annotated[Optional[Literal["ativo", "encerrado", "pendente"]], Field(None, description='Status do contratos')]
+    taxa_limpeza: Annotated[Optional[PositiveFloat], Field(None, description='Taxa de limpeza do imóvel em reais', example=50.00)]
 

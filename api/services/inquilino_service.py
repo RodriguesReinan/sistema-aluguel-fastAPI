@@ -23,9 +23,9 @@ async def create_inquilino(
         inquilino_model = InquilinoModel(**inquilino_out.model_dump(), tenant_id=current_user.id)
 
         # verifica se estamos recebendo strings vazias, do frontend
-        for key, value in inquilino_out.model_dump().items():
-            if value is None or (isinstance(value, str) and value.strip() == ""):
-                raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
+        # for key, value in inquilino_out.model_dump().items():
+        #     if value is None or (isinstance(value, str) and value.strip() == ""):
+        #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
         db_session.add(inquilino_model)
         await db_session.commit()

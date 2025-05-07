@@ -1,5 +1,5 @@
 from sqlalchemy import Select, Update, Delete
-from sqlalchemy.orm import AliasedClass
+from sqlalchemy.orm import aliased
 
 
 def filter_by_tenant(statement, tenant_id: str):
@@ -22,8 +22,8 @@ def filter_by_tenant(statement, tenant_id: str):
                 return statement.filter(entity.c.tenant_id == tenant_id)
         elif hasattr(entity, "tenant_id"):  # Para models
             return statement.filter(entity.tenant_id == tenant_id)
-        elif isinstance(entity, AliasedClass) and hasattr(entity, "tenant_id"):  # Caso use alias
-            return statement.filter(entity.tenant_id == tenant_id)
+        # elif isinstance(entity, AliasedClass) and hasattr(entity, "tenant_id"):  # Caso use alias
+        #     return statement.filter(entity.tenant_id == tenant_id)
 
     # Se nenhuma entidade tiver tenant_id, retorna o statement original
     return statement

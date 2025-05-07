@@ -1,5 +1,6 @@
 # Configurações e credenciais sensíveis
 .env
+*.env
 FIREBASE_CREDENTIALS_PATH.json
 
 # Pastas e arquivos da IDE

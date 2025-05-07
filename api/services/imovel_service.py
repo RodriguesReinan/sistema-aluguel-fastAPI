@@ -1,12 +1,14 @@
 import datetime
 from uuid import uuid4
+from datetime import date
 from fastapi import status, Body, HTTPException
 from api.routes.usuarios.models.usuario_model import UsuarioModel
+from api.routes.contratos.models import ContratoModel
 from api.contrib.tenancy import filter_by_tenant
 from api.routes.imoveis.models import ImovelModel
 from api.routes.proprietarios.models import ProprietarioModel
 from api.routes.imoveis.schemas import ImovelIn, ImovelOut, ImovelUpdate
-from sqlalchemy.future import select
+from sqlalchemy import select, and_, or_
 from api.contrib.dependecies import DatabaseDependency
 from api.services.log_service import registrar_log
 
@@ -45,9 +47,9 @@ async def create_imovel(
         imovel_model.proprietario_id = proprietario.pk_id
 
         # verifica se estamos recebendo strings vazias, do frontend
-        for key, value in imovel_out.model_dump().items():
-            if value is None or (isinstance(value, str) and value.strip() == ""):
-                raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
+        # for key, value in imovel_out.model_dump().items():
+        #     if value is None or (isinstance(value, str) and value.strip() == ""):
+        #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
         db_session.add(imovel_model)
         await db_session.commit()
@@ -74,6 +76,31 @@ async def get_all_imoveis(db_session: DatabaseDependency, current_user: UsuarioM
     # )).scalars().all()
 
     statement = select(ImovelModel).filter(ImovelModel.ativo == 1)
+    statement = filter_by_tenant(statement, current_user.id)
+
+    imoveis = (await db_session.execute(statement)).scalars().all()
+
+    return imoveis
+
+
+async def get_imovel_disponivel(db_session: DatabaseDependency, current_user: UsuarioModel):
+    hoje = date.today()
+
+    # Fazendo JOIN dos imóveis com contratos
+    statement = (
+        select(ImovelModel)
+        .outerjoin(ContratoModel, ImovelModel.pk_id == ContratoModel.imovel_id)
+        .where(
+            ImovelModel.ativo == 1,
+            or_(
+                ContratoModel.pk_id.is_(None),  # Sem contrato algum
+                and_(
+                    ContratoModel.status != "ativo",  # Ou contrato não está ativo
+                    ContratoModel.data_fim < hoje  # Ou contrato já acabou
+                )
+            )
+        )
+    )
     statement = filter_by_tenant(statement, current_user.id)
 
     imoveis = (await db_session.execute(statement)).scalars().all()

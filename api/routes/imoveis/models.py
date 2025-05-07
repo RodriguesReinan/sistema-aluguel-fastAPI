@@ -10,16 +10,16 @@ class ImovelModel(BaseModel):
 
     pk_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     endereco: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    area_total: Mapped[float] = mapped_column(Float)
-    qtd_quartos: Mapped[int] = mapped_column(Integer)
-    qtd_suites: Mapped[int] = mapped_column(Integer)
-    qtd_banheiros: Mapped[int] = mapped_column(Integer)
-    descricao: Mapped[str] = mapped_column(String(500))
+    area_total: Mapped[float] = mapped_column(Float, nullable=True)
+    qtd_quartos: Mapped[int] = mapped_column(Integer, nullable=True)
+    qtd_suites: Mapped[int] = mapped_column(Integer, nullable=True)
+    qtd_banheiros: Mapped[int] = mapped_column(Integer, nullable=True)
+    descricao: Mapped[str] = mapped_column(String(500), nullable=True)
 
     aluguel_venda: Mapped[str] = mapped_column(
         Enum("aluguel", "venda", name="alugel_ou_venda"), default="Selecione", nullable=False)
     casa_apartamento: Mapped[str] = mapped_column(
-        Enum("casa", "apartamento", name="casa_ou_apartamento"), default="Selecione", nullable=False)
+        Enum("casa", "apartamento", 'loja', name="casa_ou_apartamento"), default="Selecione", nullable=False)
     tipo_imovel: Mapped[str] = mapped_column(
         Enum("residencial", "comercial", name="tipo_imovel"), default="Selecione", nullable=False)
 

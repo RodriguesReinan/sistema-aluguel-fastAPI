@@ -1,17 +1,18 @@
 from uuid import uuid4
 from fastapi.security import OAuth2PasswordRequestForm
-from api.routes.usuarios.schemas.usuario_schema import UserIn, Token, UserLogin, UserOut
-from fastapi import status, Body, HTTPException
+from api.routes.usuarios.schemas.usuario_schema import UserIn, Token, UserOut
+from fastapi import status, Body, HTTPException, Depends
 from api.routes.usuarios.models.usuario_model import UsuarioModel
 from api.core.security import (hash_password, create_access_token, create_refresh_token)
 from sqlalchemy.future import select
 from api.contrib.dependecies import DatabaseDependency
+from api.routes.usuarios.dependecies import get_current_user
 from api.core.security import verify_password
 
 
 async def register(
         db_session: DatabaseDependency,
-        usuario_in: UserIn = Body(...)
+        usuario_in: UserIn = Body(...),
 ) -> Token:
     user_email = usuario_in.email
 
@@ -30,10 +31,10 @@ async def register(
                               )
 
     # verifica se estamos recebendo strings vazias, do frontend
-    for key in user_model.__table__.columns.keys():
-        value = getattr(user_model, key)
-        if value is None or (isinstance(value, str) and value.strip() == ""):
-            raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
+    # for key in user_model.__table__.columns.keys():
+    #     value = getattr(user_model, key)
+    #     if value is None or (isinstance(value, str) and value.strip() == ""):
+    #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
     db_session.add(user_model)
     await db_session.commit()
@@ -73,7 +74,8 @@ async def login(
     # return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
-async def get_all_usuarios(db_session: DatabaseDependency) -> list[UserOut]:
+async def get_all_usuarios(db_session: DatabaseDependency,
+                           ) -> list[UserOut]:
     usuarios: list[UserOut] = (await db_session.execute(
         select(UsuarioModel)
     )).scalars().all()
@@ -81,7 +83,8 @@ async def get_all_usuarios(db_session: DatabaseDependency) -> list[UserOut]:
     return usuarios
 
 
-async def get_usuario(id: str, db_session: DatabaseDependency) -> UserOut:
+async def get_usuario(id: str, db_session: DatabaseDependency,
+                      ) -> UserOut:
     usuario: UserOut = (await db_session.execute(
         select(UsuarioModel).filter_by(id=id)
         )).scalars().first()

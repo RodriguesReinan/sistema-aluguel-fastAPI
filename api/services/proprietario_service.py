@@ -23,10 +23,10 @@ async def create_proprietario(
         proprietario_out = ProprietarioOut(id=str(uuid4()), **proprietario_in.model_dump())
         proprietario_model = ProprietarioModel(**proprietario_out.model_dump(), tenant_id=current_user.id)
 
-        # verifica se estamos recebendo strings vazias, do frontend
-        for key, value in proprietario_out.model_dump().items():
-            if value is None or (isinstance(value, str) and value.strip() == ""):
-                raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
+        # # verifica se estamos recebendo strings vazias, do frontend
+        # for key, value in proprietario_out.model_dump().items():
+        #     if value is None or (isinstance(value, str) and value.strip() == ""):
+        #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
         db_session.add(proprietario_model)
         await db_session.commit()

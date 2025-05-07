@@ -7,4 +7,4 @@ from api.routes.tokens_dispositivos.token_model import TokenDispositivoModel
 from api.routes.notificacao.models import NotificacaoModel
 from api.routes.pagamento.models import PagamentoModel
 from api.routes.contrato_pdf_export.models import ContratoModeloPdfModel
-from api.routes.logs.models import LogModel
+from api.routes.tables_logs.models import LogModel

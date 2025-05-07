@@ -1,5 +1,5 @@
 from api.contrib.dependecies import DatabaseDependency
-from api.routes.logs.models import LogModel
+from api.routes.tables_logs.models import LogModel
 from api.routes.usuarios.models.usuario_model import UsuarioModel
 
 

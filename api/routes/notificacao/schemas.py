@@ -19,6 +19,7 @@ class Notificacao(BaseSchema):
 
 class NotificacaoIn(Notificacao):
     dispositivo_token: Annotated[str, Field(description='Token do dispositivo que recebeu a notificação')]
+    tenant_id: Annotated[str, Field(description='id externo do usuário')]
 
 
 class NotificacaoContrato(BaseSchema):

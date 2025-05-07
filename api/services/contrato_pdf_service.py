@@ -13,7 +13,7 @@ from api.routes.usuarios.models.usuario_model import UsuarioModel
 from api.routes.proprietarios.models import ProprietarioModel
 from api.contrib.tenancy import filter_by_tenant
 from api.services.log_service import registrar_log
-import locale
+from babel.dates import format_date
 
 
 async def criar_contrato(db_session: DatabaseDependency, contrato_data: ContratoCreate, current_user: UsuarioModel):
@@ -145,10 +145,11 @@ async def montar_dados_contrato(contrato_id: str, contrato_aluguel_id: str, db_s
     proprietario = (await db_session.execute(statement)).scalars().first()
 
     # Configura o locale para português do Brasil
-    locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+    # locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
 
     # Obtém a data atual e formata
-    data_assinatura_contrato = contrato_aluguel.created_at.strftime('%d de %B de %Y')
+    # data_assinatura_contrato = contrato_aluguel.created_at.strftime('%d de %B de %Y')
+    data_assinatura_contrato = format_date(contrato_aluguel.created_at, format='d \'de\' MMMM \'de\' y', locale='pt_BR')
 
     valor_aluguel = contrato_aluguel.valor_mensal
     valor_formatado = formatar_valor_br(valor_aluguel)  # Esta função formata os valores para a moeda brasileira

@@ -94,16 +94,16 @@ async def create_contrato(
             contrato_model.usuario_id = usuario.pk_id
 
             # verifica se estamos recebendo strings vazias, do frontend
-            for key, value in contrato_out.model_dump().items():
-                if value is None or (isinstance(value, str) and value.strip() == ""):
-                    raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
+            # for key, value in contrato_out.model_dump().items():
+            #     if value is None or (isinstance(value, str) and value.strip() == ""):
+            #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
 
             db_session.add(contrato_model)
             await db_session.flush()  # Persiste o contrato sem commit
             await db_session.refresh(contrato_model)
 
             # Cria os pagamentos
-            await criar_pagamentos_para_contratos(contrato_model, db_session)
+            await criar_pagamentos_para_contratos(contrato_model, db_session, current_user)
 
             await db_session.commit()
 
@@ -195,9 +195,6 @@ async def get_all_alugueis(db_session: DatabaseDependency, current_user: Usuario
             InquilinoModel.ativo == 1,
             ImovelModel.ativo == 1,
             UsuarioModel.ativo == 1
-            # ContratoModel.tenant_id == current_user.id,
-            # InquilinoModel.tenant_id == current_user.id,
-            # ImovelModel.tenant_id == current_user.id,
         )
     )
 

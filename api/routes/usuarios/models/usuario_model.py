@@ -10,7 +10,6 @@ class UsuarioModel(BaseModel):
     username: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     tokens: Mapped[list['TokenDispositivoModel']] = relationship(back_populates="usuario", lazy='selectin')
 

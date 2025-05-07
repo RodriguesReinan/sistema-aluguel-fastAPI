@@ -6,7 +6,7 @@ from api.routes.pagamento.models import PagamentoModel
 from api.routes.inquilinos.models import InquilinoModel
 from api.routes.tokens_dispositivos.token_model import TokenDispositivoModel
 from api.routes.notificacao.schemas import NotificacaoIn
-from api.db.database import get_session  # usado para o formato manual (testar_verificar_vencimentos.py)
+from api.routes.usuarios.models.usuario_model import UsuarioModel
 import logging
 
 # Configurando o logger
@@ -20,9 +20,9 @@ async def verificar_vencimentos(db_session):
     pagamentos_query = select(PagamentoModel).where(
         PagamentoModel.data_pagamento.is_(None),  # ainda não foi pago
         PagamentoModel.data_vencimento.in_([
-            hoje + timedelta(days=1),  # vence em um dia
             hoje,
-            hoje - timedelta(days=3)  # Três dias após
+            hoje - timedelta(days=3),  # Três dias após
+            hoje - timedelta(days=7)  # sete dias após
         ])
     )
 
@@ -55,6 +55,9 @@ async def verificar_vencimentos(db_session):
             logger.warning(f"[Scheduler] Inquilino não encontrado para o contrato {contrato.pk_id}.")
             continue
 
+        user = select(UsuarioModel).filter(UsuarioModel.pk_id == usuario_id, UsuarioModel.ativo == 1)
+        usuario = (await db_session.execute(user)).scalars().first()
+
         tokens = await db_session.execute(
             select(TokenDispositivoModel.dispositivo_token)
             .where(TokenDispositivoModel.usuario_id == usuario_id)
@@ -69,12 +72,7 @@ async def verificar_vencimentos(db_session):
         logger.info(f"[Scheduler] Dias para vencimento: {dias_para_vencimento}.")
 
         # Define tipo, título e mensagem da notificação
-        if dias_para_vencimento == 1:
-            tipo = 'vencimento'
-            titulo = 'Aviso de Vencimento'
-            mensagem = (
-                f'O aluguel de {inquilino.nome} vence amanhã ({pagamento.data_vencimento.strftime("%d/%m/%Y")})')
-        elif dias_para_vencimento == 0:
+        if dias_para_vencimento == 0:
             tipo = 'vencimento'
             titulo = 'Vencimento hoje'
             mensagem = f'O aluguel de {inquilino.nome} vence hoje ({pagamento.data_vencimento.strftime("%d/%m/%Y")})'
@@ -84,6 +82,13 @@ async def verificar_vencimentos(db_session):
             mensagem = (
                 f'O aluguel de {inquilino.nome} está atrasado há 3 dias '
                 f'({pagamento.data_vencimento.strftime("%d/%m/%Y")})')
+        elif dias_para_vencimento == -7:
+            tipo = 'atraso'
+            titulo = 'Pagamento em atraso'
+            mensagem = (
+                f'O aluguel de {inquilino.nome} está atrasado há 7 dias '
+                f'({pagamento.data_vencimento.strftime("%d/%m/%Y")})')
+
         else:
             logger.info(
                 f"[Scheduler] Pulo a notificação para o pagamento {pagamento.pk_id}, sem data válida para notificação.")
@@ -99,7 +104,8 @@ async def verificar_vencimentos(db_session):
                 mensagem=mensagem,
                 status='enviado-nao-visualizado',
                 usuario_id=usuario_id,
-                dispositivo_token=token
+                dispositivo_token=token,
+                tenant_id=usuario.id
             )
             await send_notification(db_session, notificacao)
 

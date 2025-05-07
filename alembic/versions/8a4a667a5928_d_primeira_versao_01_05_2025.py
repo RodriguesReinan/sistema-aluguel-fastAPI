@@ -1,8 +1,8 @@
-"""d=versao inicial02
+"""d=primeira versao - 01/05/2025
 
-Revision ID: 4eed4a9de9fd
-Revises: fcc25935cdc3
-Create Date: 2025-04-27 17:02:33.766282
+Revision ID: 8a4a667a5928
+Revises: 
+Create Date: 2025-05-01 01:25:44.134900
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = '4eed4a9de9fd'
-down_revision: Union[str, None] = 'fcc25935cdc3'
+revision: str = '8a4a667a5928'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -56,7 +56,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('rg')
     )
-    op.create_table('logs',
+    op.create_table('tables_logs',
     sa.Column('pk_id', sa.Integer(), nullable=False),
     sa.Column('usuario_id', sa.String(length=50), nullable=False),
     sa.Column('acao', sa.String(length=50), nullable=False),
@@ -76,14 +76,14 @@ def upgrade() -> None:
     sa.Column('cpf', sa.String(length=11), nullable=False),
     sa.Column('rg', sa.String(length=15), nullable=False),
     sa.Column('orgao_emissor', sa.String(length=50), nullable=False),
-    sa.Column('estado_civil', sa.String(length=25), nullable=False),
-    sa.Column('profissao_ocupacao', sa.String(length=50), nullable=False),
+    sa.Column('estado_civil', sa.String(length=25), nullable=True),
+    sa.Column('profissao_ocupacao', sa.String(length=50), nullable=True),
     sa.Column('email', sa.String(length=50), nullable=False),
     sa.Column('telefone', sa.String(length=20), nullable=False),
     sa.Column('endereco', sa.String(length=255), nullable=False),
-    sa.Column('conta_bancaria', sa.String(length=50), nullable=False),
-    sa.Column('pix', sa.String(length=50), nullable=False),
-    sa.Column('chave_pix', sa.String(length=20), nullable=False),
+    sa.Column('conta_bancaria', sa.String(length=75), nullable=True),
+    sa.Column('pix', sa.String(length=50), nullable=True),
+    sa.Column('chave_pix', sa.String(length=20), nullable=True),
     sa.Column('tenant_id', mysql.CHAR(length=36), nullable=False),
     sa.Column('id', mysql.CHAR(length=36), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
@@ -111,11 +111,11 @@ def upgrade() -> None:
     op.create_table('imoveis',
     sa.Column('pk_id', sa.Integer(), nullable=False),
     sa.Column('endereco', sa.String(length=255), nullable=False),
-    sa.Column('area_total', sa.Float(), nullable=False),
-    sa.Column('qtd_quartos', sa.Integer(), nullable=False),
-    sa.Column('qtd_suites', sa.Integer(), nullable=False),
-    sa.Column('qtd_banheiros', sa.Integer(), nullable=False),
-    sa.Column('descricao', sa.String(length=500), nullable=False),
+    sa.Column('area_total', sa.Float(), nullable=True),
+    sa.Column('qtd_quartos', sa.Integer(), nullable=True),
+    sa.Column('qtd_suites', sa.Integer(), nullable=True),
+    sa.Column('qtd_banheiros', sa.Integer(), nullable=True),
+    sa.Column('descricao', sa.String(length=500), nullable=True),
     sa.Column('aluguel_venda', sa.Enum('aluguel', 'venda', name='alugel_ou_venda'), nullable=False),
     sa.Column('casa_apartamento', sa.Enum('casa', 'apartamento', name='casa_ou_apartamento'), nullable=False),
     sa.Column('tipo_imovel', sa.Enum('residencial', 'comercial', name='tipo_imovel'), nullable=False),
@@ -214,7 +214,7 @@ def downgrade() -> None:
     op.drop_table('imoveis')
     op.drop_table('usuarios')
     op.drop_table('proprietarios')
-    op.drop_table('logs')
+    op.drop_table('tables_logs')
     op.drop_table('inquilinos')
     op.drop_table('contratos_modelo_pdf')
     # ### end Alembic commands ###

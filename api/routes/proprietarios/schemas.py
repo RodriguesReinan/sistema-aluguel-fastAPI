@@ -1,6 +1,7 @@
 from pydantic import Field, field_validator
 from typing import Annotated, Optional
 from api.contrib.schemas import BaseSchema, OutMixin
+from typing import Set
 
 
 class Proprietario(BaseSchema):
@@ -9,6 +10,7 @@ class Proprietario(BaseSchema):
     telefone: Annotated[str, Field(description='Telefone do proprietário', example='61996996152', max_length=20)]
     endereco: Annotated[str, Field(description='Endereço do proprietário',
                                    example='Quadra 202, L. 11, C. 25, São Sebastião-DF', max_length=255)]
+
     conta_bancaria: Annotated[Optional[str], Field(None, description='Conta bancária do proprietário',
                                                    example='Ag. 0001, conta: 332548-0, Banco: Inter', max_length=50)]
     pix: Annotated[Optional[str], Field(None, description='Pix do proprietário', example='04317985168', max_length=50)]
