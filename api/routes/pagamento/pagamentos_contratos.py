@@ -108,10 +108,6 @@ async def patch_pagamento(
         current_user: UsuarioModel
         ) -> PagamentoOut:
 
-    # pagamento: PagamentoOut = (await db_session.execute(
-    #     select(PagamentoModel).filter_by(id=pagamento_id)
-    # )).scalars().first()
-
     statement = select(PagamentoModel).filter(PagamentoModel.id == pagamento_id, PagamentoModel.ativo == 1)
     statement = filter_by_tenant(statement, current_user.id)
     pagamento = (await db_session.execute(statement)).scalars().first()
@@ -130,3 +126,69 @@ async def patch_pagamento(
     await db_session.refresh(pagamento)
 
     return pagamento
+
+
+async def atualizar_pagamentos(aluguel: ContratoModel, data_fim_antiga: date, nova_data_fim: date,
+                               db_session: DatabaseDependency, current_user: UsuarioModel):
+    try:
+        # Função auxiliar para ajustar a data de vencimento
+        def ajustar_data_vencimento(base_date: date, dia_vencimento: int) -> date:
+            ano = base_date.year
+            mes = base_date.month
+            ultimo_dia_mes = calendar.monthrange(ano, mes)[1]
+            dia = min(dia_vencimento, ultimo_dia_mes)
+            return base_date.replace(day=dia)
+
+        # Se a data de fim aumentou, criar novas parcelas
+        if nova_data_fim > data_fim_antiga:
+            pagamentos = []
+
+            # Obter a última data de vencimento já cadastrada
+            statement = select(PagamentoModel.data_vencimento).filter(
+                PagamentoModel.contrato_id == aluguel.pk_id
+            ).order_by(PagamentoModel.data_vencimento.desc())
+
+            ultima_parcela = (await db_session.execute(statement)).scalars().first()
+
+            # Calcular a próxima data de vencimento a partir da última registrada
+            data_vencimento = ajustar_data_vencimento(ultima_parcela + relativedelta(months=1), aluguel.dia_vencimento)
+
+            while data_vencimento <= nova_data_fim:
+                pagamento = PagamentoModel(
+                    contrato_id=aluguel.pk_id,
+                    valor_pago=0.0,
+                    data_vencimento=data_vencimento,
+                    data_pagamento=None,
+                    metodo_pagamento=None,
+                    status='pendente',
+                    tenant_id=current_user.id
+                )
+                pagamentos.append(pagamento)
+
+                # Próximo mês, mantendo o mesmo dia de vencimento
+                proxima_data_base = data_vencimento + relativedelta(months=1)
+                data_vencimento = ajustar_data_vencimento(proxima_data_base, aluguel.dia_vencimento)
+
+            db_session.add_all(pagamentos)
+            # await db_session.commit()
+
+        # Se a data de fim diminuiu, remover parcelas futuras
+        elif nova_data_fim < data_fim_antiga:
+            statement = select(PagamentoModel).filter(
+                PagamentoModel.contrato_id == aluguel.pk_id,
+                PagamentoModel.data_vencimento > nova_data_fim,
+                PagamentoModel.status == 'pendente'
+            )
+            parcelas_excedentes = (await db_session.execute(statement)).scalars().all()
+
+            for parcela in parcelas_excedentes:
+                await db_session.delete(parcela)
+
+            await db_session.commit()
+
+    except Exception as e:
+        await db_session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Erro ao atualizar os pagamentos: {str(e)}'
+        )

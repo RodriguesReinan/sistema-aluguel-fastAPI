@@ -37,7 +37,7 @@ async def create_proprietario(
         error_message = str(e)
 
         # Expressão regular para capturar "Duplicate entry '99999999999'"
-        match = re.search(r"Duplicate entry '([^']+)' for key 'proprietarios.cpf'", error_message)
+        match = re.search(r"Duplicate entry '([^']+)", error_message)
         if match:
             duplicate_entry = match.group(1)  # Captura a string completa: "Duplicate entry '99999999999'"
             duplicate_entry = f"CPF já cadastrado: {duplicate_entry}"

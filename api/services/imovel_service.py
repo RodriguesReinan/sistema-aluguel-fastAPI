@@ -11,6 +11,8 @@ from api.routes.imoveis.schemas import ImovelIn, ImovelOut, ImovelUpdate
 from sqlalchemy import select, and_, or_
 from api.contrib.dependecies import DatabaseDependency
 from api.services.log_service import registrar_log
+import re
+from sqlalchemy.exc import IntegrityError
 
 
 async def create_imovel(
@@ -46,19 +48,31 @@ async def create_imovel(
 
         imovel_model.proprietario_id = proprietario.pk_id
 
-        # verifica se estamos recebendo strings vazias, do frontend
-        # for key, value in imovel_out.model_dump().items():
-        #     if value is None or (isinstance(value, str) and value.strip() == ""):
-        #         raise HTTPException(status_code=400, detail=f"Campo {key} não pode ser vazio.")
-
         db_session.add(imovel_model)
         await db_session.commit()
         await db_session.refresh(imovel_model)
         await registrar_log(db_session, "Criação", f"Criou o imóvel: {imovel_model.id}", current_user)
 
-    except Exception as e:
+    except IntegrityError as e:
         error_message = str(e)
 
+        # Expressão regular para capturar "Duplicate entry '99999999999'"
+        match = re.search(r"Duplicate entry '([^']+)", error_message)
+
+        if match:
+            duplicate_value = match.group(1)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f'O valor {duplicate_value} já está cadastrado.'
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro de integridade ao inserir os dados. Tente novamente mais tarde."
+        )
+
+    except Exception as error_message:
+        # Captura qualquer outra falha inesperada
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Ocorreu um erro ao inserir os dados no banco. Erro: {error_message}'
