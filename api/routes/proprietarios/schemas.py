@@ -1,5 +1,5 @@
-from pydantic import Field, field_validator
-from typing import Annotated, Optional
+from pydantic import Field, field_validator, ValidationInfo
+from typing import Annotated, Optional, Union, get_origin, get_args
 from api.contrib.schemas import BaseSchema, OutMixin
 from typing import Set
 
@@ -7,7 +7,7 @@ from typing import Set
 class Proprietario(BaseSchema):
     nome: Annotated[str, Field(description='Nome do proprietário', example='Reinan Rodrigues', max_length=50)]
     cpf: Annotated[str, Field(description='CPF do proprietário', example='99999999999', max_length=11)]
-    telefone: Annotated[str, Field(description='Telefone do proprietário', example='61996996152', max_length=20)]
+    telefone: Annotated[Optional[str], Field(None, description='Telefone do proprietário', example='61996996152', max_length=20)]
     endereco: Annotated[str, Field(description='Endereço do proprietário',
                                    example='Quadra 202, L. 11, C. 25, São Sebastião-DF', max_length=255)]
 
@@ -17,17 +17,26 @@ class Proprietario(BaseSchema):
     chave_pix: Annotated[Optional[str], Field(None, description='Chave pix do proprietário', example='CPF',
                                               max_length=20)]
 
-    rg: Annotated[str, Field(description='RG do proprietário', example='99999999', max_length=15)]
-    orgao_emissor: Annotated[str, Field(description='Órgão Emissor do RG', example='SSP/DF', max_length=50)]
-    estado_civil: Annotated[str, Field(description='Estado civil do proprietário', example='Solteiro', max_length=25)]
-    profissao_ocupacao: Annotated[str, Field(description='Profissão/Ocupação do proprietário',
+    rg: Annotated[Optional[str], Field(None, description='RG do proprietário', example='99999999', max_length=15)]
+    orgao_emissor: Annotated[Optional[str], Field(None, description='Órgão Emissor do RG', example='SSP/DF', max_length=50)]
+    estado_civil: Annotated[Optional[str], Field(None, description='Estado civil do proprietário', example='Solteiro', max_length=25)]
+    profissao_ocupacao: Annotated[Optional[str], Field(None, description='Profissão/Ocupação do proprietário',
                                              example='Servidor Público', max_length=50)]
-    email: Annotated[str, Field(description='E-mail do proprietário', example='proprietario@gmail.com', max_length=50)]
+    email: Annotated[Optional[str], Field(None, description='E-mail do proprietário', example='proprietario@gmail.com', max_length=50)]
 
-    @field_validator('*')
-    def check_empty_strings(cls, value, info):
+    @field_validator('*', mode='before')
+    def check_empty_strings(cls, value, info: ValidationInfo):
+        # verifica se a string é vazia
         if isinstance(value, str) and value.strip() == "":
-            raise ValueError(f"O campo '{info.field_name}' não pode ser vazio.")
+            # verifica se o campo é opcional
+            field_name = info.field_name
+            annotation = cls.model_fields[field_name].annotation
+            is_optional = get_origin(annotation) is Union and type(None) in get_args(annotation)
+
+            if is_optional:
+                return None  # converte string vazia para None
+            else:
+                raise ValueError(f"O campo '{info.field_name}' não pode ser vazio.")
         return value
 
 

@@ -11,14 +11,14 @@ class ProprietarioModel(BaseModel):
     nome: Mapped[str] = mapped_column(String(50), nullable=False)
     cpf: Mapped[str] = mapped_column(String(11), unique=True, nullable=False)
 
-    rg: Mapped[str] = mapped_column(String(15), unique=True, nullable=False)
-    orgao_emissor: Mapped[str] = mapped_column(String(50), nullable=False)
+    rg: Mapped[str] = mapped_column(String(15), unique=True, nullable=True)
+    orgao_emissor: Mapped[str] = mapped_column(String(50), nullable=True)
     estado_civil: Mapped[str] = mapped_column(String(25), nullable=True)
     profissao_ocupacao: Mapped[str] = mapped_column(String(50), nullable=True)
-    email: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(50), unique=True, nullable=True)
 
-    telefone: Mapped[str] = mapped_column(String(20), nullable=False)
-    endereco: Mapped[str] = mapped_column(String(255), nullable=False)
+    telefone: Mapped[str] = mapped_column(String(20), nullable=True)
+    endereco: Mapped[str] = mapped_column(String(255), nullable=True)
 
     conta_bancaria: Mapped[str] = mapped_column(String(75), nullable=True)
     pix: Mapped[str] = mapped_column(String(50), nullable=True)

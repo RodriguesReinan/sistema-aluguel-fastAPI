@@ -16,7 +16,7 @@ class Imovel(BaseSchema):
                                               example='Ótima localização, próximo à parada de ônibus.', max_length=500)]
 
     aluguel_venda: Annotated[Literal['aluguel', 'venda'], Field(description='Tipo de imóvel - Aluguel ou Venda')]
-    casa_apartamento: Annotated[Literal['casa', 'apartamento', 'loja'], Field(description='Tipo de imóvel - casa ou AP')]
+    casa_apartamento: Annotated[Literal['casa', 'apartamento', 'loja', 'predio'], Field(description='Tipo de imóvel - casa ou AP')]
     tipo_imovel: Annotated[Literal['residencial', 'comercial'], Field(description='Tipo de imóvel - residencial '
                                                                                   'ou comercial')]
 

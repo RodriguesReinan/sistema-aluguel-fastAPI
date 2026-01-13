@@ -13,8 +13,8 @@ class InquilinoModel(BaseModel):
     telefone: Mapped[str] = mapped_column(String(20), nullable=False)
     data_nascimento: Mapped[str] = mapped_column(String(10), nullable=False)
 
-    rg: Mapped[str] = mapped_column(String(15), unique=True, nullable=False)
-    orgao_emissor: Mapped[str] = mapped_column(String(50), nullable=False)
+    rg: Mapped[str] = mapped_column(String(15), unique=False, nullable=True)
+    orgao_emissor: Mapped[str] = mapped_column(String(50), nullable=True)
     estado_civil: Mapped[str] = mapped_column(String(25), nullable=False)
     profissao_ocupacao: Mapped[str] = mapped_column(String(50), nullable=False)
     email: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)

@@ -19,7 +19,7 @@ class ImovelModel(BaseModel):
     aluguel_venda: Mapped[str] = mapped_column(
         Enum("aluguel", "venda", name="alugel_ou_venda"), default="Selecione", nullable=False)
     casa_apartamento: Mapped[str] = mapped_column(
-        Enum("casa", "apartamento", 'loja', name="casa_ou_apartamento"), default="Selecione", nullable=False)
+        Enum("casa", "apartamento", 'loja', 'predio', name="casa_ou_apartamento"), default="Selecione", nullable=False)
     tipo_imovel: Mapped[str] = mapped_column(
         Enum("residencial", "comercial", name="tipo_imovel"), default="Selecione", nullable=False)
 

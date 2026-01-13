@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 
-# api.main:app   -- rodar o servidor uvcorn
-# api.main:app --reload   -- rodar o servidor uvcorn com reload automático
+# uvicorn api.main:app   -- rodar o servidor uvcorn
+# uvicorn api.main:app --reload   -- rodar o servidor uvcorn com reload automático
 
 
 # Detectar ambiente
