@@ -8,7 +8,7 @@ from api.contrib.tenancy import filter_by_tenant
 from api.routes.imoveis.models import ImovelModel
 from api.routes.proprietarios.models import ProprietarioModel
 from api.routes.imoveis.schemas import ImovelIn, ImovelOut, ImovelUpdate
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, not_
 from api.contrib.dependecies import DatabaseDependency
 from api.services.log_service import registrar_log
 import re
@@ -100,25 +100,27 @@ async def get_all_imoveis(db_session: DatabaseDependency, current_user: UsuarioM
 async def get_imovel_disponivel(db_session: DatabaseDependency, current_user: UsuarioModel):
     hoje = date.today()
 
-    # Fazendo JOIN dos imóveis com contratos
-    statement = (
-        select(ImovelModel)
-        .outerjoin(ContratoModel, ImovelModel.pk_id == ContratoModel.imovel_id)
+    bloqueio_contrato = (
+        select(1)
         .where(
-            ImovelModel.ativo == 1,
+            ContratoModel.imovel_id == ImovelModel.pk_id,
+            ContratoModel.ativo == 1,  # se houver campo 'ativo' em contratos; remova se não existir
             or_(
-                ContratoModel.pk_id.is_(None),  # Sem contrato algum
-                and_(
-                    ContratoModel.status != "ativo",  # Ou contrato não está ativo
-                    ContratoModel.data_fim < hoje  # Ou contrato já acabou
-                )
+                ContratoModel.status == "ativo",
+                and_(ContratoModel.status == "pendente", ContratoModel.data_inicio <= hoje),
+                and_(ContratoModel.data_inicio <= hoje, ContratoModel.data_fim >= hoje)
             )
         )
+        .exists()
+    )
+
+    statement = select(ImovelModel).filter(
+        ImovelModel.ativo == 1,
+        not_(bloqueio_contrato)
     )
     statement = filter_by_tenant(statement, current_user.id)
 
     imoveis = (await db_session.execute(statement)).scalars().all()
-
     return imoveis
 
 
